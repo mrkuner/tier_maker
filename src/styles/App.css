@@ -1,0 +1,247 @@
+:root {
+  --card-size: 36px;
+}
+
+::view-transition-group(*) {
+  animation-duration: 380ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body {
+  background: #f6f7fb;
+}
+
+.tier-board {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #d6dee9;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.tier-board__header {
+  display: none;
+  background: #faf3e3;
+  color: #2c3a4a;
+  padding: 10px 14px;
+  border-radius: 6px;
+  text-align: center;
+  border: 1px solid #ece1c4;
+}
+.tier-board--capture .tier-board__header {
+  display: block;
+}
+.tier-board__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  word-break: break-word;
+}
+.tier-board__user {
+  font-size: 0.75rem;
+  opacity: 0.65;
+  margin-top: 2px;
+}
+
+.tier-row {
+  display: flex;
+  min-height: calc(var(--card-size) + 12px);
+  background: #eef2f7;
+}
+
+.tier-row__label {
+  flex: 0 0 min(25%, 110px);
+  width: min(25%, 110px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #222;
+  overflow: hidden;
+  padding: 4px 6px;
+}
+.tier-row__label img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tier-row__label-text {
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1.1;
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.tier-row__drop {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  background: #ffffff;
+  transition: background 0.15s;
+}
+
+.tier-row__drop.is-over {
+  background: #e3ecfa;
+}
+
+.valor-card {
+  width: var(--card-size);
+  height: var(--card-size);
+  background: #fff;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-drag: none;
+}
+.valor-card:active {
+  cursor: grabbing;
+}
+
+.valor-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.valor-card .iniciales {
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: #333;
+}
+
+.valor-card__name {
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: #222;
+  text-align: center;
+  padding: 2px;
+  line-height: 1.05;
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.tier-cabecera {
+  border: 2px solid #4a5568;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #faf3e3;
+}
+
+.tier-hero-thumb {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid #ddd;
+}
+.tier-hero-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tier-list-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: #eee;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.tier-list-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.valor-thumb {
+  width: 44px;
+  height: 44px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.valor-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.valor-thumb .iniciales {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.logo-dna {
+  position: relative;
+  display: inline-block;
+  padding: 10px 14px;
+  line-height: 0;
+}
+.logo-dna img {
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+.logo-dna::before,
+.logo-dna::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background-repeat: repeat-x;
+  background-size: 48px 10px;
+  pointer-events: none;
+}
+.logo-dna::before {
+  top: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 10' preserveAspectRatio='none'><path d='M0 5 Q 12 -2 24 5 T 48 5' stroke='%234a90e2' stroke-width='1.4' fill='none'/><path d='M0 5 Q 12 12 24 5 T 48 5' stroke='%23e94e77' stroke-width='1.4' fill='none'/><line x1='6' y1='2' x2='6' y2='8' stroke='%23888' stroke-width='0.7'/><line x1='18' y1='2' x2='18' y2='8' stroke='%23888' stroke-width='0.7'/><line x1='30' y1='2' x2='30' y2='8' stroke='%23888' stroke-width='0.7'/><line x1='42' y1='2' x2='42' y2='8' stroke='%23888' stroke-width='0.7'/></svg>");
+}
+.logo-dna::after {
+  bottom: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 10' preserveAspectRatio='none'><path d='M0 5 Q 12 -2 24 5 T 48 5' stroke='%23e94e77' stroke-width='1.4' fill='none'/><path d='M0 5 Q 12 12 24 5 T 48 5' stroke='%234a90e2' stroke-width='1.4' fill='none'/><line x1='6' y1='2' x2='6' y2='8' stroke='%23888' stroke-width='0.7'/><line x1='18' y1='2' x2='18' y2='8' stroke='%23888' stroke-width='0.7'/><line x1='30' y1='2' x2='30' y2='8' stroke='%23888' stroke-width='0.7'/><line x1='42' y1='2' x2='42' y2='8' stroke='%23888' stroke-width='0.7'/></svg>");
+}
+
+.tier-unassigned {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: #ececec;
+  border: 2px solid #4a5568;
+  border-radius: 6px;
+  min-height: calc(var(--card-size) + 16px);
+  transition: background 0.15s;
+}
+.tier-unassigned.is-over {
+  background: #d0e4ff;
+}

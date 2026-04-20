@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/FélixArasanzAventin/git/quinielas_billar/**)",
+      "Read(//c/Users/FélixArasanzAventin/git/**)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_publishable_keys",
+      "Bash(npm install *)",
+      "Bash(curl -s -o /dev/null -w \"HTML: %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"main.jsx: %{http_code}\\\\n\" http://localhost:5173/src/main.jsx)",
+      "Bash(curl -s http://localhost:5173/src/App.jsx -o /tmp/app_compiled.js)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:5173__TRACKED_VAR__)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
+}
