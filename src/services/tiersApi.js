@@ -1,9 +1,9 @@
-import supabase from './supabaseClient.js'
+import supabase, { supabaseForTier } from './supabaseClient.js'
 
 const BUCKET = 'valores-img'
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024 // 2 MB
 
-const TIER_COLUMNS = 'id, slug, nombre, niveles, fecha_limite, creador, imagen_url, etiqueta_valores, ancho_titulo, modo_apuesta, puntos_por_nivel, created_at'
+const TIER_COLUMNS = 'id, slug, nombre, niveles, fecha_limite, creador, imagen_url, etiqueta_valores, ancho_titulo, modo_apuesta, puntos_por_nivel, bloqueado, created_at'
 
 export async function listTiers() {
   const { data, error } = await supabase
@@ -52,7 +52,7 @@ export async function createTier({ slug, nombre, niveles, fecha_limite, creador,
       modo_apuesta: modo_apuesta ?? false,
       puntos_por_nivel: puntos_por_nivel ?? null,
     })
-    .select('id, slug')
+    .select('id, slug, edit_token')
     .single()
   if (tErr) throw tErr
 
@@ -76,12 +76,12 @@ export async function createTier({ slug, nombre, niveles, fecha_limite, creador,
 }
 
 export async function updateTier(id, patch) {
-  const { error } = await supabase.from('tiers').update(patch).eq('id', id)
+  const { error } = await supabaseForTier(id).from('tiers').update(patch).eq('id', id)
   if (error) throw error
 }
 
 export async function deleteTier(id) {
-  const { error } = await supabase.from('tiers').delete().eq('id', id)
+  const { error } = await supabaseForTier(id).from('tiers').delete().eq('id', id)
   if (error) throw error
 }
 
@@ -96,7 +96,7 @@ export async function getValores(tierId) {
 }
 
 export async function createValor({ tier_id, nombre, imagen_url, orden }) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseForTier(tier_id)
     .from('valores')
     .insert({ tier_id, nombre, imagen_url: imagen_url ?? null, orden: orden ?? 0 })
     .select('id, tier_id, nombre, imagen_url, orden, nivel_correcto')
@@ -105,13 +105,13 @@ export async function createValor({ tier_id, nombre, imagen_url, orden }) {
   return data
 }
 
-export async function updateValor(id, patch) {
-  const { error } = await supabase.from('valores').update(patch).eq('id', id)
+export async function updateValor(tierId, id, patch) {
+  const { error } = await supabaseForTier(tierId).from('valores').update(patch).eq('id', id)
   if (error) throw error
 }
 
-export async function deleteValor(id) {
-  const { error } = await supabase.from('valores').delete().eq('id', id)
+export async function deleteValor(tierId, id) {
+  const { error } = await supabaseForTier(tierId).from('valores').delete().eq('id', id)
   if (error) throw error
 }
 

@@ -13,15 +13,18 @@ import {
   uploadNivelImagen,
 } from '../services/tiersApi.js'
 import useAuthStore from '../store/useAuthStore.js'
+import useMisTiersStore from '../store/useMisTiersStore.js'
 import { iniciales } from '../utils/iniciales.js'
 import { colorNivel } from '../components/TierRow.jsx'
 import CropModal from '../components/CropModal.jsx'
+import { puedeEditarTier, deadlinePasada } from '../utils/permisos.js'
 
 export default function TierEditar() {
   const { slug } = useParams()
   const navigate = useNavigate()
   const session = useAuthStore((s) => s.session)
   const openLoginFn = useAuthStore((s) => s.openLogin)
+  const tokens = useMisTiersStore((s) => s.tokens)
 
   const [tier, setTier] = useState(null)
   const [valores, setValores] = useState([])
@@ -70,19 +73,28 @@ export default function TierEditar() {
     }
   }, [slug])
 
-  if (!session) {
-    return (
-      <div className="alert alert-warning d-flex align-items-center gap-2">
-        <span>Debes iniciar sesión como admin para editar.</span>
-        <button className="btn btn-sm btn-primary" onClick={openLoginFn}>
-          Login
-        </button>
-      </div>
-    )
-  }
   if (loading) return <p>Cargando…</p>
   if (error) return <div className="alert alert-danger">{error}</div>
   if (!tier) return null
+
+  if (!puedeEditarTier(tier, session, tokens)) {
+    const esMio = Boolean(tokens[tier.id])
+    const venció = deadlinePasada(tier)
+    return (
+      <div className="alert alert-warning d-flex flex-wrap align-items-center gap-2">
+        <span>
+          {esMio && venció
+            ? 'La fecha límite de este tier ya ha pasado — ya no puedes editarlo.'
+            : 'No tienes permiso para editar este tier. Inicia sesión como admin o créalo desde este navegador.'}
+        </span>
+        {!session && (
+          <button className="btn btn-sm btn-primary" onClick={openLoginFn}>
+            Login admin
+          </button>
+        )}
+      </div>
+    )
+  }
 
   async function guardarTier() {
     setError(null)
@@ -177,7 +189,7 @@ export default function TierEditar() {
 
   async function renombrarValor(id, nuevoNombre) {
     try {
-      await updateValor(id, { nombre: nuevoNombre })
+      await updateValor(tier.id, id, { nombre: nuevoNombre })
       setValores((prev) => prev.map((v) => (v.id === id ? { ...v, nombre: nuevoNombre } : v)))
     } catch (e) {
       setError(e.message)
@@ -187,7 +199,7 @@ export default function TierEditar() {
   async function borrarValor(id) {
     if (!confirm('¿Borrar este valor? También se borrarán las asignaciones de los usuarios.')) return
     try {
-      await deleteValor(id)
+      await deleteValor(tier.id, id)
       setValores((prev) => prev.filter((v) => v.id !== id))
     } catch (e) {
       setError(e.message)
@@ -197,7 +209,7 @@ export default function TierEditar() {
   async function subirImagen(id, file) {
     try {
       const url = await uploadValorImagen(tier.id, file)
-      await updateValor(id, { imagen_url: url })
+      await updateValor(tier.id, id, { imagen_url: url })
       setValores((prev) => prev.map((v) => (v.id === id ? { ...v, imagen_url: url } : v)))
     } catch (e) {
       setError(e.message)
@@ -206,7 +218,7 @@ export default function TierEditar() {
 
   async function setNivelCorrecto(id, nivel) {
     try {
-      await updateValor(id, { nivel_correcto: nivel })
+      await updateValor(tier.id, id, { nivel_correcto: nivel })
       setValores((prev) => prev.map((v) => (v.id === id ? { ...v, nivel_correcto: nivel } : v)))
     } catch (e) {
       setError(e.message)

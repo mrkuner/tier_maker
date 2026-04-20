@@ -14,6 +14,7 @@ import { colorNivel } from '../components/TierRow.jsx'
 import CropModal from '../components/CropModal.jsx'
 import useUserStore from '../store/useUserStore.js'
 import useAuthStore from '../store/useAuthStore.js'
+import useMisTiersStore from '../store/useMisTiersStore.js'
 
 const NIVELES_DEFAULT = ['S', 'A', 'B', 'C', 'D']
 
@@ -23,6 +24,7 @@ export default function TierNuevo() {
   const setNombreUsuario = useUserStore((s) => s.setNombre)
   const session = useAuthStore((s) => s.session)
   const openLogin = useAuthStore((s) => s.openLogin)
+  const addMiTier = useMisTiersStore((s) => s.addMiTier)
 
   const [step, setStep] = useState('form')
   const [nombre, setNombre] = useState('')
@@ -167,6 +169,8 @@ export default function TierNuevo() {
         valores: valoresValidos.map((it) => ({ nombre: it.nombre.trim() })),
       })
 
+      addMiTier(tier.id, tier.edit_token)
+
       const uploads = []
 
       if (imagenFile) {
@@ -192,7 +196,7 @@ export default function TierNuevo() {
         ...valoresValidos.map(async (it, idx) => {
           if (!it.file) return
           const url = await uploadValorImagen(tier.id, it.file)
-          await updateValor(creados[idx].id, { imagen_url: url })
+          await updateValor(tier.id, creados[idx].id, { imagen_url: url })
         }),
       )
 

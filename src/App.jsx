@@ -6,6 +6,7 @@ import TierView from './pages/TierView.jsx'
 import TierEditar from './pages/TierEditar.jsx'
 import TierEstadisticas from './pages/TierEstadisticas.jsx'
 import TierApuestas from './pages/TierApuestas.jsx'
+import TierCorregir from './pages/TierCorregir.jsx'
 import LoginModal from './components/LoginModal.jsx'
 import supabase from './services/supabaseClient.js'
 import { signOut } from './services/authApi.js'
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/tiers/:slug/editar" element={<TierEditar />} />
         <Route path="/tiers/:slug/estadisticas" element={<TierEstadisticas />} />
         <Route path="/tiers/:slug/apuestas" element={<TierApuestas />} />
+        <Route path="/tiers/:slug/corregir" element={<TierCorregir />} />
       </Routes>
       <LoginModal />
     </div>

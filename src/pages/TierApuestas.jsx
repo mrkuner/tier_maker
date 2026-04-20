@@ -103,7 +103,7 @@ export default function TierApuestas() {
         )}
         <div className="flex-grow-1" style={{ minWidth: 0 }}>
           <h4 className="m-0 text-break">Puntuaciones: {tier.nombre}</h4>
-          <div className="small text-muted">Ranking por aciertos del modo apuesta</div>
+          <div className="small text-muted">Ranking por aciertos</div>
         </div>
       </div>
 

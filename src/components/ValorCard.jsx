@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { iniciales } from '../utils/iniciales.js'
 
-export default function ValorCard({ valor, isOverlay = false, onClick }) {
+export default function ValorCard({ valor, isOverlay = false, onClick, modoTexto = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: valor.id,
     disabled: isOverlay,
@@ -21,7 +21,7 @@ export default function ValorCard({ valor, isOverlay = false, onClick }) {
 
   const tieneImagen = Boolean(valor.imagen_url)
   const handleDoubleClick = (e) => {
-    if (!tieneImagen || isOverlay) return
+    if (!tieneImagen || isOverlay || modoTexto) return
     e.stopPropagation()
     setShowName((v) => !v)
   }
@@ -31,6 +31,8 @@ export default function ValorCard({ valor, isOverlay = false, onClick }) {
     onClick(valor)
   }
 
+  const className = modoTexto ? 'valor-card valor-card--texto' : 'valor-card'
+
   return (
     <div
       ref={isOverlay ? undefined : setNodeRef}
@@ -39,10 +41,12 @@ export default function ValorCard({ valor, isOverlay = false, onClick }) {
       {...(isOverlay ? {} : listeners)}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      className="valor-card"
+      className={className}
       title={valor.nombre}
     >
-      {tieneImagen ? (
+      {modoTexto ? (
+        <span className="valor-card__texto">{valor.nombre}</span>
+      ) : tieneImagen ? (
         showName ? (
           <span className="valor-card__name">{valor.nombre}</span>
         ) : (
