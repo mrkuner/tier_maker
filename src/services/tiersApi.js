@@ -173,3 +173,25 @@ export async function deleteAsignacion({ tier_id, usuario, valor_id }) {
     .match({ tier_id, usuario, valor_id })
   if (error) throw error
 }
+
+export async function deleteAllAsignaciones(tierId) {
+  const { error } = await supabaseForTier(tierId)
+    .from('asignaciones')
+    .delete()
+    .eq('tier_id', tierId)
+  if (error) throw error
+}
+
+export async function clearCorreccion(tierId) {
+  const { data: vals, error: fErr } = await supabase
+    .from('valores')
+    .select('id')
+    .eq('tier_id', tierId)
+  if (fErr) throw fErr
+  if (!vals.length) return
+  const { error } = await supabaseForTier(tierId)
+    .from('valores')
+    .update({ nivel_correcto: null })
+    .eq('tier_id', tierId)
+  if (error) throw error
+}

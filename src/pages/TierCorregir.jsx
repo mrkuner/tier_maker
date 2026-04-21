@@ -3,7 +3,8 @@ import { Link, useParams, useNavigate, Navigate } from 'react-router-dom'
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -19,6 +20,8 @@ import {
   getValores,
   updateValor,
   updateTier,
+  clearCorreccion,
+  deleteAllAsignaciones,
 } from '../services/tiersApi.js'
 import TierRow from '../components/TierRow.jsx'
 import ValorCard from '../components/ValorCard.jsx'
@@ -29,10 +32,11 @@ import { deadlinePasada, tierBloqueado } from '../utils/permisos.js'
 const UNASSIGNED = '__unassigned__'
 const DROP_PREFIX = 'nivel:'
 
-function UnassignedDrop({ valores }) {
+function UnassignedDrop({ valores, titulo }) {
   const { setNodeRef, isOver } = useDroppable({ id: DROP_PREFIX + UNASSIGNED })
   return (
     <div ref={setNodeRef} className={`tier-unassigned ${isOver ? 'is-over' : ''}`}>
+      {titulo && <span className="tier-unassigned__title">{titulo}</span>}
       <SortableContext
         items={valores.map((v) => v.id)}
         strategy={horizontalListSortingStrategy}
@@ -100,7 +104,8 @@ export default function TierCorregir() {
   )
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 60, tolerance: 10 } }),
   )
 
   function collisionDetection(args) {
@@ -184,6 +189,45 @@ export default function TierCorregir() {
     navigate(`/tiers/${tier.slug}/apuestas`)
   }
 
+  async function borrarCorreccion() {
+    const ok = await confirm({
+      title: 'Borrar corrección',
+      message: 'Se eliminarán todos los niveles correctos asignados. Los valores volverán al bloque "Sin asignar". ¿Continuar?',
+      confirmText: 'Borrar corrección',
+      variant: 'danger',
+      icon: 'bi-eraser',
+    })
+    if (!ok) return
+    setWorking(true)
+    try {
+      await clearCorreccion(tier.id)
+      setValores((prev) => prev.map((v) => ({ ...v, nivel_correcto: null })))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  async function borrarPredicciones() {
+    const ok = await confirm({
+      title: 'Borrar todas las predicciones',
+      message: 'Se eliminarán TODAS las asignaciones de TODOS los usuarios en este tier. Esta acción no se puede deshacer. ¿Continuar?',
+      confirmText: 'Borrar todo',
+      variant: 'danger',
+      icon: 'bi-trash',
+    })
+    if (!ok) return
+    setWorking(true)
+    try {
+      await deleteAllAsignaciones(tier.id)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setWorking(false)
+    }
+  }
+
   if (!session) return <Navigate to={`/tiers/${slug}`} replace />
   if (loading) return <p>Cargando…</p>
   if (error) return <div className="alert alert-danger">{error}</div>
@@ -227,31 +271,12 @@ export default function TierCorregir() {
         </div>
       </div>
 
-      <div className="d-flex flex-wrap gap-2 mb-3">
-        <button
-          type="button"
-          className={`btn btn-sm ${tier.bloqueado ? 'btn-outline-primary' : 'btn-outline-warning'}`}
-          onClick={toggleBloqueo}
-          disabled={working}
-        >
-          <i className={`bi ${tier.bloqueado ? 'bi-unlock' : 'bi-lock'}`}></i>{' '}
-          {tier.bloqueado ? 'Desbloquear' : 'Bloquear'}
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm btn-success"
-          onClick={correccionTotal}
-          disabled={working}
-        >
-          <i className="bi bi-check2-all"></i> Corrección total
-        </button>
-        {bloqueadoEfectivo && (
-          <span className="align-self-center small text-muted">
-            <i className="bi bi-lock-fill"></i> Tier bloqueado
-            {deadlinePasada(tier) && !tier.bloqueado ? ' (fecha límite expirada)' : ''}
-          </span>
-        )}
-      </div>
+      {bloqueadoEfectivo && (
+        <div className="alert alert-secondary py-2 mb-3">
+          <i className="bi bi-lock-fill"></i> Tier bloqueado
+          {deadlinePasada(tier) && !tier.bloqueado ? ' (fecha límite expirada)' : ''}
+        </div>
+      )}
 
       <DndContext
         sensors={sensors}
@@ -260,8 +285,57 @@ export default function TierCorregir() {
         onDragCancel={() => setActiveId(null)}
         onDragEnd={handleDragEnd}
       >
-        <h6 className="m-0 mb-1">{tier.etiqueta_valores || 'Valores'}</h6>
-        <UnassignedDrop valores={porNivel[UNASSIGNED] ?? []} />
+        <div className="tier-dock">
+          <div className="d-flex align-items-center gap-2 mb-2 flex-nowrap tier-dock__actions">
+            <button
+              type="button"
+              className={`btn py-0 px-2 ${tier.bloqueado ? 'btn-outline-primary' : 'btn-outline-warning'}`}
+              style={{ fontSize: '0.75rem' }}
+              onClick={toggleBloqueo}
+              disabled={working}
+              title={tier.bloqueado ? 'Permitir que los usuarios editen' : 'Impedir que los usuarios editen'}
+            >
+              <i className={`bi ${tier.bloqueado ? 'bi-unlock' : 'bi-lock'}`}></i>{' '}
+              {tier.bloqueado ? 'Desbloquear' : 'Bloquear'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-success py-0 px-2"
+              style={{ fontSize: '0.75rem' }}
+              onClick={correccionTotal}
+              disabled={working}
+              title="Calcular ranking a partir de los valores correctos"
+            >
+              <i className="bi bi-check2-all"></i> Corrección total
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-danger py-0 px-2"
+              style={{ fontSize: '0.75rem' }}
+              onClick={borrarCorreccion}
+              disabled={working}
+              title="Eliminar todos los niveles correctos"
+            >
+              <i className="bi bi-eraser"></i> Borrar corrección
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger py-0 px-2"
+              style={{ fontSize: '0.75rem' }}
+              onClick={borrarPredicciones}
+              disabled={working}
+              title="Eliminar todas las predicciones de todos los usuarios"
+            >
+              <i className="bi bi-trash"></i> Borrar predicciones
+            </button>
+          </div>
+          <div className="mt-4 tier-dock__panel">
+            <UnassignedDrop
+              valores={porNivel[UNASSIGNED] ?? []}
+              titulo={tier.etiqueta_valores || 'Valores'}
+            />
+          </div>
+        </div>
         <div className="tier-board mt-4">
           <div className="tier-board__header">
             <div className="tier-board__title">{tier.nombre}</div>

@@ -65,6 +65,15 @@ export default function TierApuestas() {
     () => valores.filter((v) => v.nivel_correcto),
     [valores],
   )
+  const tierFinalizado = valores.length > 0 && valoresCorregidos.length === valores.length
+  const [openPuntos, setOpenPuntos] = useState(true)
+  const [openCorregidos, setOpenCorregidos] = useState(true)
+  useEffect(() => {
+    if (tierFinalizado) {
+      setOpenPuntos(false)
+      setOpenCorregidos(false)
+    }
+  }, [tierFinalizado])
 
   if (loading) return <p>Cargando…</p>
   if (error) return <div className="alert alert-danger">{error}</div>
@@ -107,94 +116,128 @@ export default function TierApuestas() {
         </div>
       </div>
 
-      <div className="mb-4">
-        <h6>Puntos por nivel</h6>
-        <ul className="list-group" style={{ maxWidth: 320 }}>
-          {tier.niveles.map((n, idx) => (
-            <li
-              key={n.nombre}
-              className="list-group-item d-flex align-items-center gap-2 py-1"
-            >
-              <span
-                className="d-inline-block rounded"
-                style={{
-                  background: colorNivel(idx, tier.niveles.length),
-                  width: 18,
-                  height: 18,
-                  flexShrink: 0,
-                }}
-              />
-              <span className="flex-grow-1 text-truncate fw-semibold">{n.nombre}</span>
-              <span className="badge bg-secondary">
-                {Number(puntosMap[n.nombre]) || 0} pts
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="mb-4">
-        <h6>Ranking</h6>
-        {ranking.length === 0 ? (
-          <div className="text-muted">Todavía no hay votos.</div>
-        ) : (
-          <ol className="list-group list-group-numbered">
-            {ranking.map((r) => (
-              <li
-                key={r.usuario}
-                className="list-group-item d-flex align-items-center gap-2"
-              >
-                <div className="flex-grow-1">
-                  <div className="fw-bold">{r.usuario}</div>
-                  <div className="small text-muted">
-                    {r.aciertos} acierto{r.aciertos === 1 ? '' : 's'} de {r.votos} voto
-                    {r.votos === 1 ? '' : 's'}
-                  </div>
-                </div>
-                <span className="badge bg-success fs-6">{r.puntos} pts</span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
-
-      <div>
-        <h6>Valores corregidos</h6>
-        {valoresCorregidos.length === 0 ? (
-          <div className="text-muted">
-            El administrador todavía no ha marcado ningún nivel correcto.
-          </div>
-        ) : (
-          <ul className="list-group">
-            {valoresCorregidos.map((v) => {
-              const idx = tier.niveles.findIndex((n) => n.nombre === v.nivel_correcto)
-              const color =
-                idx >= 0 ? colorNivel(idx, tier.niveles.length) : '#eee'
-              return (
-                <li
-                  key={v.id}
-                  className="list-group-item d-flex align-items-center gap-2"
-                >
-                  <div className="valor-thumb">
-                    {v.imagen_url ? (
-                      <img src={v.imagen_url} alt={v.nombre} />
-                    ) : (
-                      <span className="iniciales">{iniciales(v.nombre)}</span>
-                    )}
-                  </div>
-                  <div className="flex-grow-1 fw-bold">{v.nombre}</div>
-                  <span
-                    className="badge"
-                    style={{ background: color, color: '#222' }}
+      {(() => {
+        const rankingPanel = (
+          <div className="mb-4" key="ranking">
+            <h6>Ranking</h6>
+            {valoresCorregidos.length === 0 ? (
+              <div className="text-muted">
+                {ranking.length} clasificaci{ranking.length === 1 ? 'ón' : 'ones'} enviada
+                {ranking.length === 1 ? '' : 's'} hasta ahora.
+              </div>
+            ) : ranking.length === 0 ? (
+              <div className="text-muted">Todavía no hay votos.</div>
+            ) : (
+              <ol className="list-group list-group-numbered">
+                {ranking.map((r) => (
+                  <li
+                    key={r.usuario}
+                    className="list-group-item d-flex align-items-center gap-2"
                   >
-                    {v.nivel_correcto}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </div>
+                    <div className="flex-grow-1">
+                      <div className="fw-bold">{r.usuario}</div>
+                      <div className="small text-muted">
+                        {r.aciertos} acierto{r.aciertos === 1 ? '' : 's'} de {r.votos} voto
+                        {r.votos === 1 ? '' : 's'}
+                      </div>
+                    </div>
+                    <span className="badge bg-success fs-6">{r.puntos} pts</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        )
+        const puntosPanel = (
+          <div className="mb-4" key="puntos">
+            <button
+              type="button"
+              className="btn btn-sm btn-link p-0 text-decoration-none"
+              onClick={() => setOpenPuntos((v) => !v)}
+            >
+              <i className={`bi ${openPuntos ? 'bi-chevron-down' : 'bi-chevron-right'}`}></i>{' '}
+              <span className="fw-bold">Puntos por nivel</span>
+            </button>
+            {openPuntos && (
+              <ul className="list-group mt-2" style={{ maxWidth: 320 }}>
+                {tier.niveles.map((n, idx) => (
+                  <li
+                    key={n.nombre}
+                    className="list-group-item d-flex align-items-center gap-2 py-1"
+                  >
+                    <span
+                      className="d-inline-block rounded"
+                      style={{
+                        background: colorNivel(idx, tier.niveles.length),
+                        width: 18,
+                        height: 18,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span className="flex-grow-1 text-truncate fw-semibold">{n.nombre}</span>
+                    <span className="badge bg-secondary">
+                      {Number(puntosMap[n.nombre]) || 0} pts
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )
+        const corregidosPanel = (
+          <div className="mb-4" key="corregidos">
+            <button
+              type="button"
+              className="btn btn-sm btn-link p-0 text-decoration-none"
+              onClick={() => setOpenCorregidos((v) => !v)}
+            >
+              <i className={`bi ${openCorregidos ? 'bi-chevron-down' : 'bi-chevron-right'}`}></i>{' '}
+              <span className="fw-bold">Valores corregidos</span>
+            </button>
+            {openCorregidos && (
+              <div className="mt-2">
+                {valoresCorregidos.length === 0 ? (
+                  <div className="text-muted">
+                    El administrador todavía no ha marcado ningún nivel correcto.
+                  </div>
+                ) : (
+                  <ul className="list-group">
+                    {valoresCorregidos.map((v) => {
+                      const idx = tier.niveles.findIndex((n) => n.nombre === v.nivel_correcto)
+                      const color =
+                        idx >= 0 ? colorNivel(idx, tier.niveles.length) : '#eee'
+                      return (
+                        <li
+                          key={v.id}
+                          className="list-group-item d-flex align-items-center gap-2"
+                        >
+                          <div className="valor-thumb">
+                            {v.imagen_url ? (
+                              <img src={v.imagen_url} alt={v.nombre} />
+                            ) : (
+                              <span className="iniciales">{iniciales(v.nombre)}</span>
+                            )}
+                          </div>
+                          <div className="flex-grow-1 fw-bold">{v.nombre}</div>
+                          <span
+                            className="badge"
+                            style={{ background: color, color: '#222' }}
+                          >
+                            {v.nivel_correcto}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )
+        return tierFinalizado
+          ? [rankingPanel, puntosPanel, corregidosPanel]
+          : [puntosPanel, corregidosPanel, rankingPanel]
+      })()}
     </div>
   )
 }

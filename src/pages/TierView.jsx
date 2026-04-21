@@ -5,7 +5,8 @@ import { Modal } from 'react-bootstrap'
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -37,10 +38,11 @@ import { puedeEditarTier, tierBloqueado } from '../utils/permisos.js'
 const UNASSIGNED = '__unassigned__'
 const DROP_PREFIX = 'nivel:'
 
-function UnassignedDrop({ valores, onClickValor, modoTexto }) {
+function UnassignedDrop({ valores, onClickValor, modoTexto, titulo }) {
   const { setNodeRef, isOver } = useDroppable({ id: DROP_PREFIX + UNASSIGNED })
   return (
     <div ref={setNodeRef} className={`tier-unassigned ${isOver ? 'is-over' : ''}`}>
+      {titulo && <span className="tier-unassigned__title">{titulo}</span>}
       <SortableContext
         items={valores.map((v) => v.id)}
         strategy={horizontalListSortingStrategy}
@@ -73,7 +75,9 @@ export default function TierView() {
   const [detalleValor, setDetalleValor] = useState(null)
   const [detalleNivel, setDetalleNivel] = useState(null)
   const [modoTexto, setModoTexto] = useState(false)
+  const [zoom, setZoom] = useState(1)
   const boardRef = useRef(null)
+  const justDragged = useRef(false)
   const { confirm, element: confirmEl } = useConfirm()
 
   useEffect(() => {
@@ -81,6 +85,14 @@ export default function TierView() {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
   }, [previewUrl])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--card-size', `${Math.round(58 * zoom)}px`)
+    return () => {
+      root.style.removeProperty('--card-size')
+    }
+  }, [zoom])
 
   useEffect(() => {
     let cancel = false
@@ -134,8 +146,39 @@ export default function TierView() {
     [activeId, valores],
   )
 
+  const tierFinalizado = useMemo(
+    () => Boolean(tier?.modo_apuesta) && valores.length > 0 && valores.every((v) => v.nivel_correcto),
+    [tier, valores],
+  )
+  const resultadosPorId = useMemo(() => {
+    if (!tierFinalizado) return null
+    const map = new Map()
+    const correctoPorId = new Map(valores.map((v) => [v.id, v.nivel_correcto]))
+    for (const a of asignaciones) {
+      const correcto = correctoPorId.get(a.valor_id)
+      if (!correcto) continue
+      map.set(a.valor_id, a.nivel === correcto ? 'acierto' : 'fallo')
+    }
+    return map
+  }, [tierFinalizado, valores, asignaciones])
+  const puntosUsuarioPorNivel = useMemo(() => {
+    if (!tierFinalizado) return null
+    const puntosNivel = tier?.puntos_por_nivel ?? {}
+    const correctoPorId = new Map(valores.map((v) => [v.id, v.nivel_correcto]))
+    const out = {}
+    for (const a of asignaciones) {
+      if (correctoPorId.get(a.valor_id) !== a.nivel) continue
+      const p = Number(puntosNivel[a.nivel]) || 0
+      out[a.nivel] = (out[a.nivel] ?? 0) + p
+    }
+    return out
+  }, [tierFinalizado, tier, valores, asignaciones])
+  const tierCerrado = tierBloqueado(tier) && !tierFinalizado
+  const bloquearAcciones = tierFinalizado || (tierBloqueado(tier) && !session)
+
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 60, tolerance: 10 } }),
   )
 
   // Combine pointerWithin (best when cursor is over something) with
@@ -163,7 +206,7 @@ export default function TierView() {
     setActiveId(null)
     const { active, over } = event
     if (!over) return
-    if (tierBloqueado(tier) && !session) return
+    if (bloquearAcciones) return
     const valorId = active.id
     const nivelOrigen = nivelDeValor(valorId)
     const nivelDestino = destinoDesdeOver(over)
@@ -401,6 +444,11 @@ export default function TierView() {
     window.open(wa, '_blank', 'noopener,noreferrer')
   }
 
+  function handleClickValor(valor) {
+    if (justDragged.current) return
+    setDetalleValor(valor)
+  }
+
   if (loading) return <p>Cargando…</p>
   if (error) return <div className="alert alert-danger">{error}</div>
   if (!tier) return null
@@ -446,21 +494,26 @@ export default function TierView() {
             {tier.fecha_limite && ` · hasta ${format(new Date(tier.fecha_limite), 'dd/MM/yyyy')}`}
           </div>
         </div>
+        {tierFinalizado && (
+          <span className="tier-cabecera__estado tier-cabecera__estado--finalizado">
+            FINALIZADO
+          </span>
+        )}
+        {tierCerrado && (
+          <span className="tier-cabecera__estado tier-cabecera__estado--cerrado">
+            CERRADO
+          </span>
+        )}
       </div>
-      {tierBloqueado(tier) && !session && (
-        <div className="alert alert-warning py-2 mb-3">
-          <i className="bi bi-lock-fill"></i> Este tier está bloqueado y ya no admite más cambios.
-        </div>
-      )}
       <DndContext
         sensors={sensors}
         collisionDetection={collisionDetection}
-        onDragStart={(e) => setActiveId(e.active.id)}
-        onDragCancel={() => setActiveId(null)}
-        onDragEnd={handleDragEnd}
+        onDragStart={(e) => { setActiveId(e.active.id); justDragged.current = true }}
+        onDragCancel={() => { setActiveId(null); setTimeout(() => { justDragged.current = false }, 50) }}
+        onDragEnd={(e) => { handleDragEnd(e); setTimeout(() => { justDragged.current = false }, 50) }}
       >
-        <h6 className="m-0 mb-1">{tier.etiqueta_valores || 'Valores'}</h6>
-        <div className="d-flex align-items-center gap-2 mb-2 flex-nowrap">
+        <div className="tier-dock">
+        <div className="d-flex align-items-center gap-2 mb-2 flex-nowrap tier-dock__actions">
           <button
             type="button"
             className="btn btn-outline-secondary py-0 px-2"
@@ -479,7 +532,7 @@ export default function TierView() {
             disabled={
               valores.length === 0 ||
               asignaciones.length === valores.length ||
-              (tierBloqueado(tier) && !session)
+              bloquearAcciones
             }
             title="Asignar aleatoriamente los valores que quedan sin clasificar"
           >
@@ -490,17 +543,22 @@ export default function TierView() {
             className="btn btn-outline-secondary py-0 px-2"
             style={{ fontSize: '0.75rem' }}
             onClick={devolverTodos}
-            disabled={asignaciones.length === 0 || (tierBloqueado(tier) && !session)}
+            disabled={asignaciones.length === 0 || bloquearAcciones}
             title="Devolver todos los valores al bloque"
           >
             <i className="bi bi-arrow-counterclockwise"></i> Devolver todos
           </button>
+          {/* Zoom oculto temporalmente */}
         </div>
-        <UnassignedDrop
-          valores={porNivel[UNASSIGNED] ?? []}
-          onClickValor={setDetalleValor}
-          modoTexto={modoTexto}
-        />
+        <div className="mt-4 tier-dock__panel">
+          <UnassignedDrop
+            valores={porNivel[UNASSIGNED] ?? []}
+            onClickValor={handleClickValor}
+            modoTexto={modoTexto}
+            titulo={tier.etiqueta_valores || 'Valores'}
+          />
+        </div>
+        </div>
         <div ref={boardRef} className="tier-board mt-4">
           <div className="tier-board__header">
             <div className="tier-board__title">{tier.nombre}</div>
@@ -516,11 +574,15 @@ export default function TierView() {
               anchoTitulo={tier.ancho_titulo ?? 110}
               onClickLabel={tier.modo_apuesta ? setDetalleNivel : undefined}
               modoTexto={modoTexto}
-              onClickValor={setDetalleValor}
+              onClickValor={handleClickValor}
               puntos={
                 tier.modo_apuesta
                   ? Number(tier.puntos_por_nivel?.[nivel.nombre]) || 0
                   : null
+              }
+              resultados={resultadosPorId}
+              puntosUsuario={
+                puntosUsuarioPorNivel ? puntosUsuarioPorNivel[nivel.nombre] ?? 0 : null
               }
             />
           ))}
@@ -535,7 +597,7 @@ export default function TierView() {
           type="button"
           className="btn btn-sm btn-success"
           onClick={abrirResultado}
-          disabled={generando || (tierBloqueado(tier) && !session)}
+          disabled={generando || bloquearAcciones}
         >
           <i className="bi bi-check2-circle"></i>{' '}
           {generando ? 'Generando…' : 'Guardar'}

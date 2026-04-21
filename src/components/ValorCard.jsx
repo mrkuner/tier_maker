@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { iniciales } from '../utils/iniciales.js'
 
-export default function ValorCard({ valor, isOverlay = false, onClick, modoTexto = false }) {
+export default function ValorCard({ valor, isOverlay = false, onClick, modoTexto = false, resultado = null }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: valor.id,
     disabled: isOverlay,
@@ -54,6 +54,11 @@ export default function ValorCard({ valor, isOverlay = false, onClick, modoTexto
         )
       ) : (
         <span className="iniciales">{iniciales(valor.nombre)}</span>
+      )}
+      {resultado && (
+        <span className={`valor-card__resultado valor-card__resultado--${resultado}`}>
+          <i className={`bi ${resultado === 'acierto' ? 'bi-check-lg' : 'bi-x-lg'}`}></i>
+        </span>
       )}
     </div>
   )

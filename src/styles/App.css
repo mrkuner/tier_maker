@@ -1,5 +1,5 @@
 :root {
-  --card-size: 36px;
+  --card-size: 58px;
 }
 
 ::view-transition-group(*) {
@@ -67,11 +67,11 @@ body {
 }
 .tier-row__pts {
   position: absolute;
-  top: 2px;
+  bottom: 2px;
   right: 2px;
   font-family: 'Impact', 'Haettenschweiler', 'Oswald', 'Arial Narrow Bold', sans-serif;
   font-stretch: condensed;
-  font-size: 0.7rem;
+  font-size: 0.62rem;
   letter-spacing: 0.04em;
   color: #fff;
   background: linear-gradient(180deg, #ffd24d 0%, #ff9800 55%, #d35400 100%);
@@ -86,9 +86,11 @@ body {
   z-index: 2;
 }
 .tier-row__label img {
-  width: 100%;
+  width: auto;
   height: 100%;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
+  border-radius: 4px;
 }
 .tier-row__label-text {
   font-weight: 700;
@@ -113,6 +115,28 @@ body {
   padding: 6px;
   background: #ffffff;
   transition: background 0.15s;
+  position: relative;
+}
+
+.tier-row__pts-usuario {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-family: 'Impact', 'Haettenschweiler', 'Oswald', 'Arial Narrow Bold', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: linear-gradient(180deg, #2ecc71 0%, #1e874b 100%);
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  text-shadow: 1px 1px 0 #000, -1px 0 0 #000, 0 1px 0 #000, 1px 0 0 #000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  line-height: 1;
+  pointer-events: none;
+  transform: skewX(-8deg);
+  z-index: 3;
 }
 
 .tier-row__drop.is-over {
@@ -121,7 +145,9 @@ body {
 
 .valor-card {
   width: var(--card-size);
+  min-width: var(--card-size);
   height: var(--card-size);
+  flex-shrink: 0;
   background: #fff;
   border-radius: 6px;
   display: flex;
@@ -142,6 +168,29 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.valor-card__resultado {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--card-size) * 0.7);
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0.7;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+.valor-card__resultado--acierto {
+  color: #1a8c3f;
+}
+.valor-card__resultado--fallo {
+  color: #c0271c;
+}
+.valor-card {
+  position: relative;
 }
 
 .valor-card .iniciales {
@@ -187,6 +236,30 @@ body {
   border-radius: 8px;
   padding: 10px 14px;
   background: #faf3e3;
+  position: relative;
+  overflow: hidden;
+}
+
+.tier-cabecera__estado {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Impact', 'Haettenschweiler', 'Oswald', 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  pointer-events: none;
+  text-transform: uppercase;
+  transform: rotate(-8deg);
+  text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.7);
+}
+.tier-cabecera__estado--cerrado {
+  color: #b00020;
+}
+.tier-cabecera__estado--finalizado {
+  color: #0a7a3b;
 }
 
 .tier-hero-thumb {
@@ -279,13 +352,80 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 8px;
+  padding: 22px 8px 8px;
   background: #ececec;
   border: 2px solid #4a5568;
   border-radius: 6px;
-  min-height: calc(var(--card-size) + 16px);
+  min-height: calc(var(--card-size) + 30px);
   transition: background 0.15s;
+  position: relative;
 }
 .tier-unassigned.is-over {
   background: #d0e4ff;
+}
+
+@media (max-width: 500px) {
+  body {
+    padding-bottom: 180px;
+  }
+  .tier-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    background: #fff;
+    border-top: 1px solid #b5bfcf;
+    box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.12);
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+    max-height: 50vh;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .tier-dock__actions {
+    flex-wrap: wrap !important;
+    margin-bottom: 0 !important;
+    row-gap: 4px;
+  }
+  .tier-dock__panel {
+    margin-top: 14px !important;
+    overflow: visible;
+  }
+  .tier-dock .tier-unassigned {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 26px 8px 8px;
+    min-height: calc(var(--card-size) + 34px);
+    max-height: calc(50vh - 90px);
+    -webkit-overflow-scrolling: touch;
+  }
+  .tier-dock .tier-unassigned__title {
+    top: 4px;
+    left: 8px;
+    font-size: 0.72rem;
+    padding: 1px 6px;
+  }
+  .tier-dock .valor-card {
+    touch-action: pan-x;
+  }
+}
+.tier-unassigned__title {
+  position: absolute;
+  top: -0.75em;
+  left: 14px;
+  margin: 0;
+  padding: 2px 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: #eaf1fb;
+  color: #2a3e5c;
+  line-height: 1.2;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  max-width: calc(100% - 28px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
