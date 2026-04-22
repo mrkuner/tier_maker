@@ -3,10 +3,10 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { iniciales } from '../utils/iniciales.js'
 
-export default function ValorCard({ valor, isOverlay = false, onClick, modoTexto = false, resultado = null }) {
+export default function ValorCard({ valor, isOverlay = false, onClick, modoTexto = false, resultado = null, bloqueado = false }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: valor.id,
-    disabled: isOverlay,
+    disabled: isOverlay || bloqueado,
   })
   const [showName, setShowName] = useState(false)
 

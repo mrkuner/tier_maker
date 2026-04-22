@@ -40,7 +40,7 @@ import { puedeEditarTier, tierBloqueado } from '../utils/permisos.js'
 const UNASSIGNED = '__unassigned__'
 const DROP_PREFIX = 'nivel:'
 
-function UnassignedDrop({ valores, onClickValor, modoTexto, titulo }) {
+function UnassignedDrop({ valores, onClickValor, modoTexto, titulo, bloqueado }) {
   const { setNodeRef, isOver } = useDroppable({ id: DROP_PREFIX + UNASSIGNED })
   return (
     <div ref={setNodeRef} className={`tier-unassigned ${isOver ? 'is-over' : ''}`}>
@@ -50,7 +50,7 @@ function UnassignedDrop({ valores, onClickValor, modoTexto, titulo }) {
         strategy={horizontalListSortingStrategy}
       >
         {valores.map((v) => (
-          <ValorCard key={v.id} valor={v} onClick={onClickValor} modoTexto={modoTexto} />
+          <ValorCard key={v.id} valor={v} onClick={onClickValor} modoTexto={modoTexto} bloqueado={bloqueado} />
         ))}
       </SortableContext>
     </div>
@@ -544,6 +544,11 @@ export default function TierView() {
         )}
         <div className="flex-grow-1" style={{ minWidth: 0 }}>
           <h4 className="m-0 text-break">{tier.nombre}</h4>
+          {esVisita && (
+            <div className="fs-3 fw-bold text-primary text-break mt-1">
+              Tier de {nombreRanking || 'otro usuario'}
+            </div>
+          )}
           <div className="small text-muted">
             por {tier.creador}
             {tier.fecha_limite && ` · hasta ${format(new Date(tier.fecha_limite), 'dd/MM/yyyy')}`}
@@ -611,6 +616,7 @@ export default function TierView() {
             onClickValor={handleClickValor}
             modoTexto={modoTexto}
             titulo={tier.etiqueta_valores || 'Valores'}
+            bloqueado={bloquearAcciones}
           />
         </div>
         </div>
@@ -630,6 +636,7 @@ export default function TierView() {
               onClickLabel={tier.modo_apuesta ? setDetalleNivel : undefined}
               modoTexto={modoTexto}
               onClickValor={handleClickValor}
+              bloqueado={bloquearAcciones}
               puntos={
                 tier.modo_apuesta
                   ? Number(tier.puntos_por_nivel?.[nivel.nombre]) || 0

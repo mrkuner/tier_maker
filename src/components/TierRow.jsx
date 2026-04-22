@@ -8,7 +8,7 @@ export function colorNivel(index, total) {
   return `hsl(${hue}, 70%, 70%)`
 }
 
-export default function TierRow({ nivel, index, total, valores, anchoTitulo, onClickLabel, modoTexto, puntos, onClickValor, resultados, puntosUsuario }) {
+export default function TierRow({ nivel, index, total, valores, anchoTitulo, onClickLabel, modoTexto, puntos, onClickValor, resultados, puntosUsuario, bloqueado }) {
   const { setNodeRef, isOver } = useDroppable({ id: `nivel:${nivel.nombre}` })
   const color = colorNivel(index, total)
   const labelStyle = anchoTitulo
@@ -48,6 +48,7 @@ export default function TierRow({ nivel, index, total, valores, anchoTitulo, onC
               modoTexto={modoTexto}
               onClick={onClickValor}
               resultado={resultados?.get(v.id) ?? null}
+              bloqueado={bloqueado}
             />
           ))}
         </SortableContext>
