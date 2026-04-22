@@ -36,7 +36,7 @@ export default function App() {
       <nav className="mb-3 d-flex align-items-center gap-3">
         <Link to="/" className="text-decoration-none">
           <span className="logo-dna">
-            <img src="/logo.png" alt="TierLab" style={{ height: 48 }} />
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="TierLab" style={{ height: 48 }} />
           </span>
         </Link>
         <div className="ms-auto d-flex align-items-center gap-2">
