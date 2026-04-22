@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Modal } from 'react-bootstrap'
 import { getTierBySlug, getValores, getAsignaciones } from '../services/tiersApi.js'
 import { colorNivel } from '../components/TierRow.jsx'
 import { iniciales } from '../utils/iniciales.js'
+import usePrefsStore from '../store/usePrefsStore.js'
 
 export default function TierEstadisticas() {
   const { slug } = useParams()
@@ -11,6 +13,9 @@ export default function TierEstadisticas() {
   const [asignaciones, setAsignaciones] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const modoTexto = usePrefsStore((s) => s.modoTexto)
+  const toggleModoTexto = usePrefsStore((s) => s.toggleModoTexto)
+  const [detalleValor, setDetalleValor] = useState(null)
 
   useEffect(() => {
     let cancel = false
@@ -70,7 +75,7 @@ export default function TierEstadisticas() {
       const nombre = tier.niveles[c.nivelIdx].nombre
       out[nombre].push(c)
     }
-    const usuariosUnicos = new Set(asignaciones.map((a) => a.usuario)).size
+    const usuariosUnicos = new Set(asignaciones.map((a) => a.ranking_id)).size
     return { porNivel: out, stats: map, usuarios: usuariosUnicos }
   }, [tier, valores, asignaciones])
 
@@ -102,6 +107,19 @@ export default function TierEstadisticas() {
         </div>
       </div>
 
+      <div className="d-flex align-items-center gap-2 mb-2 flex-nowrap">
+        <button
+          type="button"
+          className="btn btn-outline-secondary py-0 px-2"
+          style={{ fontSize: '0.75rem' }}
+          onClick={toggleModoTexto}
+          title={modoTexto ? 'Mostrar como imágenes' : 'Mostrar como texto'}
+        >
+          <i className={`bi ${modoTexto ? 'bi-image' : 'bi-fonts'}`}></i>{' '}
+          {modoTexto ? 'Ver imágenes' : 'Ver texto'}
+        </button>
+      </div>
+
       <div className="tier-board">
         <div className="tier-board__header">
           <div className="tier-board__title">{tier.nombre}</div>
@@ -130,9 +148,20 @@ export default function TierEstadisticas() {
                   <div
                     key={valor.id}
                     className="valor-card"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetalleValor(valor)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setDetalleValor(valor)
+                      }
+                    }}
                     title={`${valor.nombre} · ${votos} voto${votos === 1 ? '' : 's'} · media ${mean.toFixed(2)}`}
                   >
-                    {valor.imagen_url ? (
+                    {modoTexto ? (
+                      <span className="iniciales">{valor.nombre}</span>
+                    ) : valor.imagen_url ? (
                       <img src={valor.imagen_url} alt={valor.nombre} draggable={false} />
                     ) : (
                       <span className="iniciales">{iniciales(valor.nombre)}</span>
@@ -150,8 +179,23 @@ export default function TierEstadisticas() {
           <h6 className="text-muted">Sin votos</h6>
           <div className="tier-unassigned">
             {sinVotos.map((v) => (
-              <div key={v.id} className="valor-card" title={v.nombre}>
-                {v.imagen_url ? (
+              <div
+                key={v.id}
+                className="valor-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetalleValor(v)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setDetalleValor(v)
+                  }
+                }}
+                title={v.nombre}
+              >
+                {modoTexto ? (
+                  <span className="iniciales">{v.nombre}</span>
+                ) : v.imagen_url ? (
                   <img src={v.imagen_url} alt={v.nombre} draggable={false} />
                 ) : (
                   <span className="iniciales">{iniciales(v.nombre)}</span>
@@ -187,6 +231,23 @@ export default function TierEstadisticas() {
             ))}
         </ol>
       </div>
+
+      <Modal show={!!detalleValor} onHide={() => setDetalleValor(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>{detalleValor?.nombre}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center">
+          {detalleValor?.imagen_url ? (
+            <img
+              src={detalleValor.imagen_url}
+              alt={detalleValor.nombre}
+              style={{ maxWidth: '100%', maxHeight: 400, borderRadius: 8 }}
+            />
+          ) : (
+            <div className="text-muted">Sin imagen</div>
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
   )
 }

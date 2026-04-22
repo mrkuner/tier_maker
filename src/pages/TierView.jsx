@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toBlob } from 'html-to-image'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Modal } from 'react-bootstrap'
 import {
   DndContext,
@@ -33,6 +33,8 @@ import { useConfirm } from '../components/ConfirmModal.jsx'
 import useUserStore from '../store/useUserStore.js'
 import useAuthStore from '../store/useAuthStore.js'
 import useMisTiersStore from '../store/useMisTiersStore.js'
+import useMisRankingsStore from '../store/useMisRankingsStore.js'
+import usePrefsStore from '../store/usePrefsStore.js'
 import { puedeEditarTier, tierBloqueado } from '../utils/permisos.js'
 
 const UNASSIGNED = '__unassigned__'
@@ -57,13 +59,20 @@ function UnassignedDrop({ valores, onClickValor, modoTexto, titulo }) {
 
 export default function TierView() {
   const { slug } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const rankingVisitado = searchParams.get('r')
   const nombre = useUserStore((s) => s.nombre)
   const session = useAuthStore((s) => s.session)
   const tokens = useMisTiersStore((s) => s.tokens)
+  const getRankingLocal = useMisRankingsStore((s) => s.getRankingId)
+  const getNombreLocal = useMisRankingsStore((s) => s.getNombre)
+  const setRankingLocal = useMisRankingsStore((s) => s.setRanking)
 
   const [tier, setTier] = useState(null)
   const [valores, setValores] = useState([])
   const [asignaciones, setAsignaciones] = useState([])
+  const [rankingId, setRankingId] = useState(null)
+  const [nombreRanking, setNombreRanking] = useState(null)
   const [activeId, setActiveId] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -74,10 +83,13 @@ export default function TierView() {
   const [guardado, setGuardado] = useState(false)
   const [detalleValor, setDetalleValor] = useState(null)
   const [detalleNivel, setDetalleNivel] = useState(null)
-  const [modoTexto, setModoTexto] = useState(false)
+  const esVisita = Boolean(rankingVisitado) && rankingVisitado !== getRankingLocal(tier?.id)
+  const modoTexto = usePrefsStore((s) => s.modoTexto)
+  const toggleModoTexto = usePrefsStore((s) => s.toggleModoTexto)
   const [zoom, setZoom] = useState(1)
   const boardRef = useRef(null)
   const justDragged = useRef(false)
+  const rankingIdRef = useRef(null)
   const { confirm, element: confirmEl } = useConfirm()
 
   useEffect(() => {
@@ -102,12 +114,18 @@ export default function TierView() {
         const t = await getTierBySlug(slug)
         if (cancel) return
         setTier(t)
+        const rankingCarga = rankingVisitado || getRankingLocal(t.id)
         const [v, a] = await Promise.all([
           getValores(t.id),
-          nombre ? getAsignaciones(t.id, nombre) : Promise.resolve([]),
+          rankingCarga
+            ? getAsignaciones(t.id, { ranking_id: rankingCarga })
+            : Promise.resolve([]),
         ])
         if (cancel) return
         setValores(v)
+        setRankingId(rankingCarga || null)
+        rankingIdRef.current = rankingCarga || null
+        setNombreRanking(a[0]?.usuario ?? getNombreLocal(t.id) ?? null)
         setAsignaciones(a.map((x) => ({ valor_id: x.valor_id, nivel: x.nivel, orden: x.orden })))
       } catch (e) {
         if (!cancel) setError(e.message)
@@ -118,7 +136,7 @@ export default function TierView() {
     return () => {
       cancel = true
     }
-  }, [slug, nombre])
+  }, [slug, rankingVisitado, getRankingLocal, getNombreLocal])
 
   const porNivel = useMemo(() => {
     if (!tier) return {}
@@ -174,7 +192,7 @@ export default function TierView() {
     return out
   }, [tierFinalizado, tier, valores, asignaciones])
   const tierCerrado = tierBloqueado(tier) && !tierFinalizado
-  const bloquearAcciones = tierFinalizado || (tierBloqueado(tier) && !session)
+  const bloquearAcciones = esVisita || tierFinalizado || (tierBloqueado(tier) && !session)
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -192,6 +210,16 @@ export default function TierView() {
   function nivelDeValor(valorId) {
     const a = asignaciones.find((x) => x.valor_id === valorId)
     return a ? a.nivel : UNASSIGNED
+  }
+
+  function ensureRankingId(usuario) {
+    if (rankingIdRef.current) return rankingIdRef.current
+    const rid = crypto.randomUUID()
+    rankingIdRef.current = rid
+    setRankingId(rid)
+    setNombreRanking(usuario)
+    if (tier?.id) setRankingLocal(tier.id, rid, usuario)
+    return rid
   }
 
   function destinoDesdeOver(over) {
@@ -216,9 +244,9 @@ export default function TierView() {
       if (nivelOrigen === UNASSIGNED) return
       setAsignaciones((prev) => prev.filter((x) => x.valor_id !== valorId))
       setGuardado(false)
-      if (nombre) {
+      if (nombre && rankingIdRef.current) {
         try {
-          await deleteAsignacion({ tier_id: tier.id, usuario: nombre, valor_id: valorId })
+          await deleteAsignacion({ ranking_id: rankingIdRef.current, valor_id: valorId })
         } catch (e) {
           setError(e.message)
         }
@@ -252,11 +280,13 @@ export default function TierView() {
 
     if (nombre) {
       try {
+        const rid = ensureRankingId(nombre)
         const filas = nextAsign.filter((x) => x.nivel === nivelDestino)
         await Promise.all(
           filas.map((f) =>
             upsertAsignacion({
               tier_id: tier.id,
+              ranking_id: rid,
               usuario: nombre,
               valor_id: f.valor_id,
               nivel: f.nivel,
@@ -288,10 +318,12 @@ export default function TierView() {
     setError(null)
     try {
       const usuario = nombre || 'Anónimo'
+      const rid = ensureRankingId(usuario)
       await Promise.all(
         asignaciones.map((a) =>
           upsertAsignacion({
             tier_id: tier.id,
+            ranking_id: rid,
             usuario,
             valor_id: a.valor_id,
             nivel: a.nivel,
@@ -361,10 +393,12 @@ export default function TierView() {
     }
     if (nombre) {
       try {
+        const rid = ensureRankingId(nombre)
         await Promise.all(
           nuevas.map((a) =>
             upsertAsignacion({
               tier_id: tier.id,
+              ranking_id: rid,
               usuario: nombre,
               valor_id: a.valor_id,
               nivel: a.nivel,
@@ -390,11 +424,12 @@ export default function TierView() {
     } else {
       apply()
     }
-    if (nombre) {
+    if (nombre && rankingIdRef.current) {
       try {
+        const rid = rankingIdRef.current
         await Promise.all(
           aDevolver.map((a) =>
-            deleteAsignacion({ tier_id: tier.id, usuario: nombre, valor_id: a.valor_id }),
+            deleteAsignacion({ ranking_id: rid, valor_id: a.valor_id }),
           ),
         )
       } catch (e) {
@@ -403,27 +438,31 @@ export default function TierView() {
     }
   }
 
+  function urlBase() {
+    return `${window.location.origin}${window.location.pathname}`
+  }
+
   function compartirTierWhatsapp() {
-    const url = window.location.href
+    const url = urlBase()
     const texto = `Mira este tier: ${tier.nombre} — ${url}`
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
   }
 
-  function compartirTierEmail() {
-    const url = window.location.href
-    const subject = `Tier: ${tier.nombre}`
-    const body = `Mira este tier:\n\n${tier.nombre}\n${url}`
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  function compartirMiRankingWhatsapp() {
+    if (!rankingId) return
+    const url = `${urlBase()}?r=${rankingId}`
+    const texto = `Mira mi ranking de ${tier.nombre}: ${url}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
   }
 
-  function compartirTierTelegram() {
-    const url = window.location.href
-    const texto = `Mira este tier: ${tier.nombre}`
-    window.open(
-      `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(texto)}`,
-      '_blank',
-      'noopener,noreferrer',
-    )
+  async function copiarMiRanking() {
+    if (!rankingId) return
+    const url = `${urlBase()}?r=${rankingId}`
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      window.prompt('Copia el enlace:', url)
+    }
   }
 
   async function compartirWhatsapp() {
@@ -481,6 +520,22 @@ export default function TierView() {
           </Link>
         )}
       </div>
+      {esVisita && (
+        <div className="alert alert-info d-flex flex-wrap align-items-center gap-2 mb-3 py-2">
+          <i className="bi bi-eye"></i>
+          <span>
+            Estás viendo el ranking de{' '}
+            <strong>{nombreRanking || 'otro usuario'}</strong>
+          </span>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary ms-auto"
+            onClick={() => setSearchParams({}, { replace: true })}
+          >
+            <i className="bi bi-pencil"></i> Hacer el mío
+          </button>
+        </div>
+      )}
       <div className="tier-cabecera d-flex align-items-center gap-3 mb-3">
         {tier.imagen_url && (
           <div className="tier-hero-thumb">
@@ -518,7 +573,7 @@ export default function TierView() {
             type="button"
             className="btn btn-outline-secondary py-0 px-2"
             style={{ fontSize: '0.75rem' }}
-            onClick={() => setModoTexto((v) => !v)}
+            onClick={toggleModoTexto}
             title={modoTexto ? 'Mostrar como imágenes' : 'Mostrar como texto'}
           >
             <i className={`bi ${modoTexto ? 'bi-image' : 'bi-fonts'}`}></i>{' '}
@@ -591,47 +646,54 @@ export default function TierView() {
           {activeValor ? <ValorCard valor={activeValor} isOverlay modoTexto={modoTexto} /> : null}
         </DragOverlay>
       </DndContext>
-      <div className="d-flex flex-wrap align-items-center gap-2 mt-3">
-        <NombreUsuarioInput className="d-flex gap-2 align-items-center m-0" />
-        <button
-          type="button"
-          className="btn btn-sm btn-success"
-          onClick={abrirResultado}
-          disabled={generando || bloquearAcciones}
-        >
-          <i className="bi bi-check2-circle"></i>{' '}
-          {generando ? 'Generando…' : 'Guardar'}
-        </button>
-      </div>
-      <div className="d-flex flex-wrap gap-2 mt-2">
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-success"
-          onClick={compartirTierWhatsapp}
-          disabled={!guardado}
-          title={guardado ? 'Compartir tier por WhatsApp' : 'Guarda primero para compartir'}
-        >
-          <i className="bi bi-whatsapp"></i> WhatsApp
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-secondary"
-          onClick={compartirTierEmail}
-          disabled={!guardado}
-          title={guardado ? 'Compartir tier por email' : 'Guarda primero para compartir'}
-        >
-          <i className="bi bi-envelope"></i> Email
-        </button>
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-info"
-          onClick={compartirTierTelegram}
-          disabled={!guardado}
-          title={guardado ? 'Compartir tier por Telegram' : 'Guarda primero para compartir'}
-        >
-          <i className="bi bi-telegram"></i> Telegram
-        </button>
-      </div>
+      {!esVisita && (
+        <div className="d-flex flex-wrap align-items-center gap-2 mt-3">
+          <NombreUsuarioInput className="d-flex gap-2 align-items-center m-0" />
+          <button
+            type="button"
+            className="btn btn-sm btn-success"
+            onClick={abrirResultado}
+            disabled={generando || bloquearAcciones}
+          >
+            <i className="bi bi-check2-circle"></i>{' '}
+            {generando ? 'Generando…' : 'Guardar'}
+          </button>
+        </div>
+      )}
+      {!esVisita && (
+        <div className="d-flex flex-wrap gap-2 mt-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-success"
+            onClick={compartirMiRankingWhatsapp}
+            disabled={!guardado || !rankingId}
+            title={
+              guardado
+                ? 'Compartir tu ranking por WhatsApp'
+                : 'Guarda primero para compartir tu ranking'
+            }
+          >
+            <i className="bi bi-whatsapp"></i> Compartir mi ranking
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={copiarMiRanking}
+            disabled={!guardado || !rankingId}
+            title="Copiar enlace a tu ranking"
+          >
+            <i className="bi bi-link-45deg"></i> Copiar enlace
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={compartirTierWhatsapp}
+            title="Invitar a otros a hacer su propio ranking"
+          >
+            <i className="bi bi-share"></i> Compartir tier
+          </button>
+        </div>
+      )}
 
       {confirmEl}
 

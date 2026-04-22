@@ -25,12 +25,12 @@ export async function getTierBySlug(slug) {
 }
 
 export async function getUsuariosCountPorTier() {
-  const { data, error } = await supabase.from('asignaciones').select('tier_id, usuario')
+  const { data, error } = await supabase.from('asignaciones').select('tier_id, ranking_id')
   if (error) throw error
   const sets = new Map()
   for (const r of data) {
     if (!sets.has(r.tier_id)) sets.set(r.tier_id, new Set())
-    sets.get(r.tier_id).add(r.usuario)
+    sets.get(r.tier_id).add(r.ranking_id)
   }
   const out = {}
   for (const [tierId, set] of sets) out[tierId] = set.size
@@ -145,32 +145,32 @@ async function uploadToBucket(basePath, file) {
   return data.publicUrl
 }
 
-export async function getAsignaciones(tierId, usuario) {
+export async function getAsignaciones(tierId, { ranking_id } = {}) {
   let query = supabase
     .from('asignaciones')
-    .select('id, tier_id, usuario, valor_id, nivel, orden')
+    .select('id, tier_id, ranking_id, usuario, valor_id, nivel, orden')
     .eq('tier_id', tierId)
-  if (usuario) query = query.eq('usuario', usuario)
+  if (ranking_id) query = query.eq('ranking_id', ranking_id)
   const { data, error } = await query.order('orden', { ascending: true })
   if (error) throw error
   return data
 }
 
-export async function upsertAsignacion({ tier_id, usuario, valor_id, nivel, orden }) {
+export async function upsertAsignacion({ tier_id, ranking_id, usuario, valor_id, nivel, orden }) {
   const { error } = await supabase
     .from('asignaciones')
     .upsert(
-      { tier_id, usuario, valor_id, nivel, orden },
-      { onConflict: 'tier_id,usuario,valor_id' },
+      { tier_id, ranking_id, usuario, valor_id, nivel, orden },
+      { onConflict: 'ranking_id,valor_id' },
     )
   if (error) throw error
 }
 
-export async function deleteAsignacion({ tier_id, usuario, valor_id }) {
+export async function deleteAsignacion({ ranking_id, valor_id }) {
   const { error } = await supabase
     .from('asignaciones')
     .delete()
-    .match({ tier_id, usuario, valor_id })
+    .match({ ranking_id, valor_id })
   if (error) throw error
 }
 

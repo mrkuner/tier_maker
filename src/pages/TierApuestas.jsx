@@ -39,26 +39,26 @@ export default function TierApuestas() {
     if (!tier) return []
     const puntosMap = tier.puntos_por_nivel ?? {}
     const valorById = new Map(valores.map((v) => [v.id, v]))
-    const porUsuario = new Map()
+    const porRanking = new Map()
     for (const a of asignaciones) {
       const v = valorById.get(a.valor_id)
       if (!v) continue
-      const entry = porUsuario.get(a.usuario) ?? { puntos: 0, aciertos: 0, votos: 0 }
+      const entry =
+        porRanking.get(a.ranking_id) ??
+        { ranking_id: a.ranking_id, usuario: a.usuario, puntos: 0, aciertos: 0, votos: 0 }
       entry.votos += 1
       if (v.nivel_correcto && v.nivel_correcto === a.nivel) {
         const puntos = Number(puntosMap[a.nivel]) || 0
         entry.puntos += puntos
         entry.aciertos += 1
       }
-      porUsuario.set(a.usuario, entry)
+      porRanking.set(a.ranking_id, entry)
     }
-    return [...porUsuario.entries()]
-      .map(([usuario, s]) => ({ usuario, ...s }))
-      .sort((a, b) => {
-        if (b.puntos !== a.puntos) return b.puntos - a.puntos
-        if (b.aciertos !== a.aciertos) return b.aciertos - a.aciertos
-        return a.usuario.localeCompare(b.usuario)
-      })
+    return [...porRanking.values()].sort((a, b) => {
+      if (b.puntos !== a.puntos) return b.puntos - a.puntos
+      if (b.aciertos !== a.aciertos) return b.aciertos - a.aciertos
+      return (a.usuario || '').localeCompare(b.usuario || '')
+    })
   }, [tier, valores, asignaciones])
 
   const valoresCorregidos = useMemo(
@@ -131,7 +131,7 @@ export default function TierApuestas() {
               <ol className="list-group list-group-numbered">
                 {ranking.map((r) => (
                   <li
-                    key={r.usuario}
+                    key={r.ranking_id}
                     className="list-group-item d-flex align-items-center gap-2"
                   >
                     <div className="flex-grow-1">
